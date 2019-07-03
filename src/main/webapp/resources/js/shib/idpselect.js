@@ -1447,7 +1447,8 @@ function IdPSelectUI() {
     var buildIdPSelector = function(){
         var containerDiv = buildDiv('IdPSelector');
         var preferredTileExists;
-        preferredTileExists = buildPreferredIdPTile(containerDiv);
+        //preferredTileExists = buildPreferredIdPTile(containerDiv);
+        preferredTileExists = false;
         buildIdPEntryTile(containerDiv, preferredTileExists);
         buildIdPDropDownListTile(containerDiv, preferredTileExists);
         return containerDiv;
@@ -1734,6 +1735,7 @@ function IdPSelectUI() {
 
         idpListDiv.appendChild(form);
 
+/*
         //
         // The switcher
         //
@@ -1746,6 +1748,8 @@ function IdPSelectUI() {
             idpListDiv.style.display='none';
         };
         idpListDiv.appendChild(a);
+*/
+
         buildHelpText(idpListDiv);
 
         parentDiv.appendChild(idpListDiv);
