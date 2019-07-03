@@ -128,7 +128,7 @@ public class DataverseUserPage implements java.io.Serializable {
     private EditMode editMode;
     private String redirectPage = "dataverse.xhtml";
     private List<String> affiliationList = new ArrayList<String>();
-    
+
     @NotBlank(message = "{password.retype}")
     private String inputPassword;
 
@@ -168,7 +168,7 @@ public class DataverseUserPage implements java.io.Serializable {
         }
 
         if ( session.getUser().isAuthenticated() ) {
-            AuthenticatedUser user = (AuthenticatedUser) session.getUser();            
+            AuthenticatedUser user = (AuthenticatedUser) session.getUser();
             String userAffiliation = user.getAffiliation();
             String affl = affiliationServiceBean.getLocalizedAffiliation(userAffiliation);
             user.setLocalizedAffiliation(affl);
@@ -249,6 +249,17 @@ public class DataverseUserPage implements java.io.Serializable {
             logger.info("Email is not valid: " + userEmail);
             return;
         }
+
+        String domain = userEmail.substring(userEmail.indexOf("@")+1).trim();
+        boolean domainValid = isEmailDomainAllowed(domain);
+        if (!domainValid) {
+            ((UIInput) toValidate).setValid(false);
+            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR, BundleUtil.getStringFromBundle("user.email.domain.invalid"), null);
+            context.addMessage(toValidate.getClientId(context), message);
+            logger.info("Invalid email domain: " + userEmail);
+            return;
+        }
+
         boolean userEmailFound = false;
         AuthenticatedUser aUser = authenticationService.getAuthenticatedUserByEmail(userEmail);
         if (editMode == EditMode.CREATE) {
@@ -359,15 +370,15 @@ public class DataverseUserPage implements java.io.Serializable {
             
             String userAffiliation = au.getAffiliation();
             String alias = affiliationServiceBean.getAlias(userAffiliation);
-            Dataverse dv = dataverseService.findByAlias(alias);            
+            Dataverse dv = dataverseService.findByAlias(alias);
             if (dv == null || !dv.isReleased()) {
-                alias = "";                
+                alias = "";
             }
             if (!alias.equals("") && redirectPage.contains("/dataverse.xhtml")) {
                 redirectPage = "%2Fdataverse.xhtml%3Falias%3D" + alias;
                 logger.log(Level.FINE, "redirect {0} to affiliate {1} dataverse", new Object[] {redirectPage, alias});
             }
-            
+
             if ("dataverse.xhtml".equals(redirectPage)) {
                 redirectPage = redirectPage + "?alias=" + dataverseService.findRootDataverse().getAlias();
             }
@@ -619,11 +630,11 @@ public class DataverseUserPage implements java.io.Serializable {
     }
 
     public void setCurrentUser(AuthenticatedUser currentUser) {
-        this.currentUser = currentUser;       
+        this.currentUser = currentUser;
         userDisplayInfo = currentUser.getDisplayInfo();
         username = currentUser.getUserIdentifier();
     }
-    
+
     public EditMode getEditMode() {
         return editMode;
     }
@@ -732,7 +743,7 @@ public class DataverseUserPage implements java.io.Serializable {
         if(notification.getRequestor() == null) return BundleUtil.getStringFromBundle("notification.email.info.unavailable");;
         return notification.getRequestor().getEmail() != null ? notification.getRequestor().getEmail() : BundleUtil.getStringFromBundle("notification.email.info.unavailable");
     }
-     
+
     public List<String> getAffiliationList() {
         affiliationList.clear();
         ResourceBundle bundle = BundleUtil.getResourceBundle("affiliation");
@@ -755,5 +766,16 @@ public class DataverseUserPage implements java.io.Serializable {
             }
         }
         return affiliationList;
-    }   
+    }
+
+   private boolean isEmailDomainAllowed(String userEmail) {
+        String validEmailDomains = settingsWrapper.getValueForKey(SettingsServiceBean.Key.CommaDelimitedEmailDomains);
+        if (StringUtils.isNotBlank(validEmailDomains)) {
+            List<String> list = Arrays.asList(validEmailDomains.toLowerCase().split("\\s*,\\s*"));
+            if(list.contains(userEmail.toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
