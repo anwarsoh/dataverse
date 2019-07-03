@@ -10,6 +10,7 @@ import edu.harvard.iq.dataverse.authorization.exceptions.AuthenticationProviderF
 import edu.harvard.iq.dataverse.authorization.exceptions.AuthorizationSetupException;
 import edu.harvard.iq.dataverse.authorization.providers.AuthenticationProviderFactory;
 import edu.harvard.iq.dataverse.authorization.providers.AuthenticationProviderRow;
+import edu.harvard.iq.dataverse.authorization.groups.impl.affiliation.AffiliationServiceBean;
 import edu.harvard.iq.dataverse.authorization.providers.builtin.BuiltinAuthenticationProvider;
 import edu.harvard.iq.dataverse.authorization.providers.builtin.BuiltinAuthenticationProviderFactory;
 import edu.harvard.iq.dataverse.authorization.providers.builtin.BuiltinUser;
@@ -40,6 +41,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
@@ -48,6 +50,7 @@ import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
 import javax.ejb.Singleton;
+import javax.inject.Inject;
 import javax.inject.Named;
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
@@ -59,6 +62,7 @@ import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * The AuthenticationManager is responsible for registering and listing
@@ -107,6 +111,9 @@ public class AuthenticationServiceBean {
     @EJB
     PasswordValidatorServiceBean passwordValidatorService;
         
+    @Inject
+    AffiliationServiceBean affiliationBean;
+    
     @PersistenceContext(unitName = "VDCNet-ejbPU")
     private EntityManager em;
     
@@ -547,7 +554,7 @@ public class AuthenticationServiceBean {
         // set account creation time & initial login time (same timestamp)
         authenticatedUser.setCreatedTime(new Timestamp(new Date().getTime()));
         authenticatedUser.setLastLoginTime(authenticatedUser.getCreatedTime());
-        
+        saveAffiliationInEnglish(userDisplayInfo);
         authenticatedUser.applyDisplayInfo(userDisplayInfo);
 
         // we have no desire for leading or trailing whitespace in identifiers
@@ -557,23 +564,23 @@ public class AuthenticationServiceBean {
         // we now select a username for the generated AuthenticatedUser, or give up
         String internalUserIdentifer = proposedAuthenticatedUserIdentifier;
         // TODO should lock table authenticated users for write here
-        if ( identifierExists(internalUserIdentifer) ) {
-            if ( ! generateUniqueIdentifier ) {
+        if (identifierExists(internalUserIdentifer)) {
+            if (!generateUniqueIdentifier) {
                 return null;
             }
-            int i=1;
+            int i = 1;
             String identifier = internalUserIdentifer + i;
-            while ( identifierExists(identifier) ) {
+            while (identifierExists(identifier)) {
                 i += 1;
             }
             authenticatedUser.setUserIdentifier(identifier);
         } else {
             authenticatedUser.setUserIdentifier(internalUserIdentifer);
         }
-        authenticatedUser = save( authenticatedUser );
+        authenticatedUser = save(authenticatedUser);
         // TODO should unlock table authenticated users for write here
         AuthenticatedUserLookup auusLookup = userRecordId.createAuthenticatedUserLookup(authenticatedUser);
-        em.persist( auusLookup );
+        em.persist(auusLookup);
         authenticatedUser.setAuthenticatedUserLookup(auusLookup);
 
         if (ShibAuthenticationProvider.PROVIDER_ID.equals(auusLookup.getAuthenticationProviderId())) {
@@ -586,9 +593,9 @@ public class AuthenticationServiceBean {
              * better to do something like "startConfirmEmailProcessForNewUser". */
             confirmEmailService.createToken(authenticatedUser);
         }
-        
-        actionLogSvc.log( new ActionLogRecord(ActionLogRecord.ActionType.Auth, "createUser")
-            .setInfo(authenticatedUser.getIdentifier()));
+
+        actionLogSvc.log(new ActionLogRecord(ActionLogRecord.ActionType.Auth, "createUser")
+                .setInfo(authenticatedUser.getIdentifier()));
 
         return authenticatedUser;
     }
@@ -605,9 +612,11 @@ public class AuthenticationServiceBean {
     }
     
     public AuthenticatedUser updateAuthenticatedUser(AuthenticatedUser user, AuthenticatedUserDisplayInfo userDisplayInfo) {
+        user.setLocalizedAffiliation(userDisplayInfo.getAffiliation());
+        saveAffiliationInEnglish(userDisplayInfo);
         user.applyDisplayInfo(userDisplayInfo);
         actionLogSvc.log( new ActionLogRecord(ActionLogRecord.ActionType.Auth, "updateUser")
-            .setInfo(user.getIdentifier()));
+                .setInfo(user.getIdentifier()));
         return update(user);
     }
     
@@ -896,4 +905,12 @@ public class AuthenticationServiceBean {
         return query.getResultList();
     }
 
+    private void saveAffiliationInEnglish(AuthenticatedUserDisplayInfo userDisplayInfo) {
+        ResourceBundle bundle = BundleUtil.getResourceBundle("affiliation");
+        String language = bundle.getLocale().getLanguage();
+        if (StringUtils.isNotBlank(language) && !language.equalsIgnoreCase("en")) {
+            ResourceBundle enBundle = BundleUtil.getResourceBundle("affiliation", "en");
+            affiliationBean.convertAffiliation(userDisplayInfo, bundle, enBundle);
+        }        
+    }    
 }

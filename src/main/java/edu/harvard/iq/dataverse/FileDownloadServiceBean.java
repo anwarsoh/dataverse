@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.logging.Logger;
 import javax.ejb.EJB;
+import javax.ejb.SessionBean;
 import javax.ejb.Stateless;
 import javax.faces.context.FacesContext;
 import javax.inject.Inject;
@@ -75,8 +76,10 @@ public class FileDownloadServiceBean implements java.io.Serializable {
     
     @Inject WorldMapPermissionHelper worldMapPermissionHelper;
     @Inject FileDownloadHelper fileDownloadHelper;
+
     @Inject
     MakeDataCountLoggingServiceBean mdcLogService;
+
 
     private static final Logger logger = Logger.getLogger(FileDownloadServiceBean.class.getCanonicalName());   
     
@@ -254,11 +257,15 @@ public class FileDownloadServiceBean implements java.io.Serializable {
                 dataFile = guestbookResponse.getDataFile();
             }
         }
+
         //For tools to get the dataset and datasetversion ids, we need a full DataFile object (not a findCheapAndEasy() copy)
         if(dataFile.getFileMetadata()==null) {
             dataFile=datafileService.find(dataFile.getId());
         }
-        ExternalToolHandler externalToolHandler = new ExternalToolHandler(externalTool, dataFile, apiToken, fmd);
+
+        String localeCode = session.getLocaleCode();
+        ExternalToolHandler externalToolHandler = new ExternalToolHandler(externalTool, dataFile, apiToken, fmd, localeCode);
+
         // Back when we only had TwoRavens, the downloadType was always "Explore". Now we persist the name of the tool (i.e. "TwoRavens", "Data Explorer", etc.)
         guestbookResponse.setDownloadtype(externalTool.getDisplayName());
         String toolUrl = externalToolHandler.getToolUrlWithQueryParams();

@@ -29,8 +29,21 @@ public class ExternalToolHandler {
     private final DataFile dataFile;
     private final Dataset dataset;
     private final FileMetadata fileMetadata;
-
     private ApiToken apiToken;
+    private String localeCode;
+
+    public ExternalToolHandler(ExternalTool externalTool, DataFile dataFile, ApiToken apiToken) {
+        this.externalTool = externalTool;
+        if (dataFile == null) {
+            String error = "A DataFile is required.";
+            logger.warning("Error in ExternalToolHandler constructor: " + error);
+            throw new IllegalArgumentException(error);
+        }
+        this.dataFile = dataFile;
+        this.apiToken = apiToken;
+        this.dataset = null;
+        this.fileMetadata = null;
+    }
 
     /**
      * @param externalTool The database entity.
@@ -51,12 +64,21 @@ public class ExternalToolHandler {
         this.fileMetadata = fileMetadata;
     }
 
+    public ExternalToolHandler(ExternalTool externalTool, DataFile dataFile, ApiToken apiToken, FileMetadata fileMetadata, String localeCode) {
+        this(externalTool, dataFile, apiToken, fileMetadata);
+        this.localeCode = localeCode;
+    }
+    
     public DataFile getDataFile() {
         return dataFile;
     }
 
     public FileMetadata getFileMetadata() {
         return fileMetadata;
+    }
+
+    public String getLocaleCode() {
+        return localeCode;
     }
 
     public ApiToken getApiToken() {
@@ -117,6 +139,8 @@ public class ExternalToolHandler {
                 return key + "=" + version;
             case FILE_METADATA_ID:
                 return key + "=" + fileMetadata.getId();
+            case LOCALE_CODE:
+                return key + "=" + getLocaleCode();
             default:
                 break;
         }

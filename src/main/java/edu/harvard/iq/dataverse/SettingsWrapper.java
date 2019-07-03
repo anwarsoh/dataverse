@@ -203,7 +203,7 @@ public class SettingsWrapper implements java.io.Serializable {
 
         return !getDropBoxKey().isEmpty();
     }
-    
+
     // Language Locales Configuration: 
     
     // Map from locale to display name eg     en -> English
@@ -224,9 +224,9 @@ public class SettingsWrapper implements java.io.Serializable {
     }
     
     private void initLocaleSettings() {
-        
+
         configuredLocales = new LinkedHashMap<>();
-        
+
         try {
             JSONArray entries = new JSONArray(getValueForKey(SettingsServiceBean.Key.Languages, "[]"));
             for (Object obj : entries) {
@@ -240,6 +240,10 @@ public class SettingsWrapper implements java.io.Serializable {
             //e.printStackTrace();
             // do we want to know? - probably not
         }
+    }
+
+    public boolean isAffiliationSelectable() {
+        return isTrueForKey(Key.AffiliationDropDown, false);
     }
 }
 
