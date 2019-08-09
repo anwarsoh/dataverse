@@ -1314,12 +1314,15 @@ function IdPSelectUI() {
                 return false;
             }
 
+            var idpBlackList = ["https://idp.testshib.org/idp/shibboleth"];
+
             //
             // Parse it
             //
-
             idpData = JSON.parse(jsonData);
-
+            idpData = idpData.filter(function (obj) {
+                return !idpBlackList.includes(obj.entityID);
+            });
         }else{
             fatal(getLocalizedMessage('fatal.loadFailed') + dataSource + '.');
             return false;
